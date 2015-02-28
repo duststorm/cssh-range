@@ -1,11 +1,17 @@
 CSSH-Range
 ==========
 
-Usage instructions
-------------------
+Introduction
+------------
 
 CSSH-range is an avahi-backed cluster-ssh connection tool.
 It allows you to connect to a range of hosts with cssh using a short command.
+This tool is Useful in applications where clusters of unix-based IoT devices 
+have to be administered.
+
+
+Usage instructions
+------------------
 
 Cssh-range takes a hostname_base as argument, which is translated to a range
 of hostnames by appending "-x" where x is an increasing index number.
