@@ -24,6 +24,13 @@ import sys
 import os
 import subprocess
 
+def which(filename):
+    for path in os.environ["PATH"].split(os.pathsep):
+        full_path = os.path.join(path, filename)
+        if os.path.exists(full_path):
+                return full_path
+    return None
+
 def getAvahiHosts():
     class AvahiHost(object):
         def __init__(self, hostname, domain='local', protocol="", interface="", description=""):
@@ -56,9 +63,11 @@ def getAvahiHosts():
 
     hosts = []
     hostnames = dict()
-    if not os.path.exists("/usr/bin/avahi-browse"):
+    avahi_browse = which("/usr/bin/avahi-browse")
+    if not avahi_browse:
+        raise RuntimeError("Error: the avahi-browse application is not installed")
         return hosts
-    client_list=subprocess.Popen(["avahi-browse","-at"],stdout=subprocess.PIPE)
+    client_list=subprocess.Popen([avahi_browse,"-at"],stdout=subprocess.PIPE)
     client_list.wait()
     for line in client_list.stdout.readlines():
         tokens = line.split()
@@ -187,5 +196,9 @@ def main(args):
     sys.exit(0)
 
 if __name__=="__main__":
-    main(sys.argv[1:])
+    try:
+        main(sys.argv[1:])
+    except RuntimeError as e:
+        print e
+        sys.exit(-1)
 
