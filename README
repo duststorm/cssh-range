@@ -6,8 +6,8 @@ Introduction
 
 CSSH-range is an avahi-backed cluster-ssh connection tool.
 It allows you to connect to a range of hosts with cssh using a short command.
-This tool is Useful in applications where clusters of unix-based IoT devices 
-have to be administered.
+This tool is Useful in applications where clusters of unix-based IoT (Internet
+of Things) devices have to be administered.
 
 
 Usage instructions
@@ -32,9 +32,9 @@ Note that if you were to store "foo" in the hostname file, instead of "foo-1",
 the first device would get the hostname "foo" assigned, the others would get 
 "foo-1", "foo-2", ... This makes the first unit fall outside of the range.
 
-To use this tool, you need to have cssh or Cluster ssh installed. On 
-debian-based systems it can be installed using:
-  apt-get install clusterssh
+To use this tool, you need to have cssh or Cluster ssh and avahi-browse 
+installed. On debian-based systems these can be installed using:
+  apt-get install clusterssh avahi-daemon avahi-utils
 This software is written in python and relies exclusively on the standard 
 libraries. A Python2 interpreter is required to run.
 
