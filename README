@@ -1,0 +1,59 @@
+CSSH-Range
+==========
+
+Usage instructions
+------------------
+
+CSSH-range is an avahi-backed cluster-ssh connection tool.
+It allows you to connect to a range of hosts with cssh using a short command.
+
+Cssh-range takes a hostname_base as argument, which is translated to a range
+of hostnames by appending "-x" where x is an increasing index number.
+
+For example:
+  cssh-range.py foo
+This will find and connect to all devices that announce their hostname via
+the AVAHI daemon in range:
+  foo-1.local foo-2.local foo-3.local ...
+
+This is a common practice with avahi hostnames, where avahi appends an index to 
+keep hostnames unique.
+To get started, configure your devices with a common base hostname (usually in
+the file /etc/hostname), for example "foo-1". The "-1" will automatically be
+replaced with an incremental index by avahi to identify each device with a 
+unique hostname.
+Note that if you were to store "foo" in the hostname file, instead of "foo-1", 
+the first device would get the hostname "foo" assigned, the others would get 
+"foo-1", "foo-2", ... This makes the first unit fall outside of the range.
+
+To use this tool, you need to have cssh or Cluster ssh installed. On 
+debian-based systems it can be installed using:
+  apt-get install clusterssh
+This software is written in python and relies exclusively on the standard 
+libraries. A Python2 interpreter is required to run.
+
+Usage:
+cssh-range.py [-h] [<username@>]<hostname_base> [<begin>] [<end>]
+  cssh-range takes a hostname_base as argument, which is translated to a range
+  of hostnames by appending "-x" where x is an increasing index number.
+
+  hostname_base   The base hostname to use in the range
+  username        The username to login to SSH with
+  begin           Integer number where the range should begin
+  end             Integer number where the range should stop (inclusive)
+                  When only one number is specified, it's the end index, begin
+                  defaults to 1
+                  Not specifying begin and/or end index will use avahi-browse
+                  to discover the available range and include all
+
+  -h, --help      Shows this help message
+  -l, --list      List hostnames in range only, do not connect
+
+
+Licensing
+---------
+
+This software is written by Jonas Hauquier and is distributed under the GPLv3 
+license. For more information, see the accompanying COPYING file that comes with
+this software.
+
