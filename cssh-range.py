@@ -63,7 +63,7 @@ def getAvahiHosts():
 
     hosts = []
     hostnames = dict()
-    avahi_browse = which("/usr/bin/avahi-browse")
+    avahi_browse = which("avahi-browse")
     if not avahi_browse:
         raise RuntimeError("Error: the avahi-browse application is not installed")
         return hosts
