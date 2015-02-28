@@ -116,6 +116,13 @@ def open_cssh(hosts, user=None):
         addresses = ["%s@%s" % (user,h.address) for h in hosts]
     else:
         addresses = [h.address for h in hosts]
+
+    cssh = which('cssh')
+    if not cssh:
+        raise RuntimeError("Error: the cssh application is not installed")
+    p = subprocess.Popen([cssh] + addresses)
+    p.communicate()
+    print "Connections closed"
     return True
 
 def usage():
