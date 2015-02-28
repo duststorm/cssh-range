@@ -16,7 +16,12 @@ Usage instructions
 Cssh-range takes a hostname_base as argument, which is translated to a range
 of hostnames by appending "-x" where x is an increasing index number.
 
-For example:
+Cssh-range intelligently resolves ranges of hostnames by polling the detected
+avahi names, and only returns those hostnames that actually exist on the
+network. This makes it also a useful tool to list the avahi hostnames within a
+range that are visible on the network (use the -l option for that).
+
+An example:
   cssh-range.py foo
 This will find and connect to all devices that announce their hostname via
 the AVAHI daemon in range:
