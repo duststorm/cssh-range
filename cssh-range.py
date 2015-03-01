@@ -45,6 +45,16 @@ def getAvahiHosts():
             return "%s.%s" % (self.hostname, self.domain)
 
         @property
+        def base_hostname(self):
+            common = host.hostname.rstrip('0123456789')
+            if not common.endswith('-'):
+                # Not an indexed hostname
+                return None
+            # Remove the trailing -
+            common = common[:-1]
+            return common
+
+        @property
         def index(self):
             common = self.hostname.rstrip('0123456789')
             if not common.endswith('-'):
@@ -91,17 +101,12 @@ def discover_hosts_in_range(base_hostname, start_idx=None, end_idx=None):
     if not end_idx:
         end_idx = float("inf")
 
-    def same_basename(host):
-        common = host.hostname.rstrip('0123456789')
-        if not common.endswith('-'):
-            # Not an indexed hostname
-            return False
-        # Remove the trailing -
-        common = common[:-1]
-        return common == base_hostname
+    def _same_basename(host):
+        common = host.base_hostname
+        return common and common == base_hostname
 
     hosts = getAvahiHosts()
-    hosts = filter(same_basename, hosts)
+    hosts = filter(_same_basename, hosts)
 
     # Sort hosts by index
     hosts = sorted(hosts, key=lambda h: int(h.index))
@@ -193,6 +198,10 @@ def main(args):
         idx_start = int(args[1])
         idx_end = int(args[2])
         hosts = discover_hosts_in_range(base_hostname, idx_start, idx_end)
+
+    if len(hosts) == 0:
+        print "No hosts found"
+        sys.exit(-2)
 
     if list_only:
         print "Hostname listing:\n  %s" % '\n  '.join([h.address for h in hosts])
