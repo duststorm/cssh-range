@@ -46,7 +46,7 @@ def getAvahiHosts():
 
         @property
         def base_hostname(self):
-            common = host.hostname.rstrip('0123456789')
+            common = self.hostname.rstrip('0123456789')
             if not common.endswith('-'):
                 # Not an indexed hostname
                 return None
