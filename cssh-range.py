@@ -116,6 +116,18 @@ def discover_hosts_in_range(base_hostname, start_idx=None, end_idx=None):
             result.append(h)
     return result
 
+def clear_known_hosts(hosts):
+    ssh_keygen = which('ssh-keygen')
+    if not ssh_keygen:
+        raise RuntimeError("Error: the ssh-keygen application is not installed")
+    known_hosts_file = os.path.expanduser('~/.ssh/known_hosts')
+
+    for h in hosts:
+        print ("Forgetting known_host key for %s" % h.address)
+        p = subprocess.Popen([ssh_keygen, '-f', known_hosts_file, '-R', h.address])
+        p.communicate()
+    return True
+
 def open_cssh(hosts, user=None):
     if user:
         addresses = ["%s@%s" % (user,h.address) for h in hosts]
@@ -148,6 +160,7 @@ cssh-range.py [-h] [<username@>]<hostname_base> [<begin>] [<end>]
 
   -h, --help      Shows this help message
   -l, --list      List hostnames in range only, do not connect
+  -c, --clearkeys Clear the ssh known_host keys for the hosts in range
 """
 
 def main(args):
@@ -180,6 +193,10 @@ def main(args):
     if '-l' in args or '--list' in args:
         list_only = True
 
+    do_clear_known_hosts = False
+    if '-c' in args or '--clearkeys' in args:
+        do_clear_known_hosts = True
+
     args = [a for a in args if not a.startswith('-')]
 
     if len(args) == 0:
@@ -202,6 +219,9 @@ def main(args):
     if len(hosts) == 0:
         print "No hosts found"
         sys.exit(-2)
+
+    if do_clear_known_hosts:
+        clear_known_hosts(hosts)
 
     if list_only:
         print "Hostname listing:\n  %s" % '\n  '.join([h.address for h in hosts])
