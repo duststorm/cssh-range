@@ -24,6 +24,47 @@ import sys
 import os
 import subprocess
 
+
+class AvahiHost(object):
+    def __init__(self, hostname, domain='local', protocol="", interface="", description=""):
+        self.hostname = hostname
+        self.domain = domain
+        self.protocol = protocol
+        self.interface = interface
+        self.description = description
+
+    @property
+    def address(self):
+        return "%s.%s" % (self.hostname, self.domain)
+
+    @property
+    def base_hostname(self):
+        common = self.hostname.rstrip('0123456789')
+        if not common.endswith('-'):
+            # Not an indexed hostname
+            return None
+        # Remove the trailing -
+        common = common[:-1]
+        return common
+
+    @property
+    def index(self):
+        common = self.hostname.rstrip('0123456789')
+        if not common.endswith('-'):
+            # Not an indexed hostname
+            return ""
+        return self.hostname[len(common):]
+
+    def __str__(self):
+        return "<AvahiHost %s.%s>" % (self.hostname, self.domain)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __unicode__(self):
+        return self.__str__()
+
+
 def which(filename):
     for path in os.environ["PATH"].split(os.pathsep):
         full_path = os.path.join(path, filename)
@@ -32,52 +73,13 @@ def which(filename):
     return None
 
 def getAvahiHosts():
-    class AvahiHost(object):
-        def __init__(self, hostname, domain='local', protocol="", interface="", description=""):
-            self.hostname = hostname
-            self.domain = domain
-            self.protocol = protocol
-            self.interface = interface
-            self.description = description
-
-        @property
-        def address(self):
-            return "%s.%s" % (self.hostname, self.domain)
-
-        @property
-        def base_hostname(self):
-            common = self.hostname.rstrip('0123456789')
-            if not common.endswith('-'):
-                # Not an indexed hostname
-                return None
-            # Remove the trailing -
-            common = common[:-1]
-            return common
-
-        @property
-        def index(self):
-            common = self.hostname.rstrip('0123456789')
-            if not common.endswith('-'):
-                # Not an indexed hostname
-                return ""
-            return self.hostname[len(common):]
-
-        def __str__(self):
-            return "<AvahiHost %s.%s>" % (self.hostname, self.domain)
-
-        def __repr__(self):
-            return self.__str__()
-
-        def __unicode__(self):
-            return self.__str__()
-
     hosts = []
     hostnames = dict()
     avahi_browse = which("avahi-browse")
     if not avahi_browse:
         raise RuntimeError("Error: the avahi-browse application is not installed")
         return hosts
-    client_list=subprocess.Popen([avahi_browse,"-at"],stdout=subprocess.PIPE)
+    client_list=subprocess.Popen([avahi_browse,"-at"], stdout=subprocess.PIPE)
     client_list.wait()
     for line in client_list.stdout.readlines():
         tokens = line.split()
@@ -95,7 +97,16 @@ def getAvahiHosts():
             hosts.append(host)
     return hosts
 
-def discover_hosts_in_range(base_hostname, start_idx=None, end_idx=None):
+def ping(hostname):
+    ping = which("ping")
+    if not ping:
+        raise RuntimeError("Error: the ping application is not installed")
+    print ("Pinging %s ..." % hostname)
+    p = subprocess.Popen([ping, '-c', '1', hostname], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out,err = p.communicate()
+    return p.returncode == 0
+
+def discover_hosts_in_range(base_hostname, ping_missing=False, start_idx=None, end_idx=None):
     if not start_idx:
         start_idx = 1
     if not end_idx:
@@ -114,6 +125,54 @@ def discover_hosts_in_range(base_hostname, start_idx=None, end_idx=None):
     for h in hosts:
         if int(h.index) >= start_idx and int(h.index) <= end_idx:
             result.append(h)
+
+    if ping_missing:
+        result = append_missing_hosts_in_range(result, start_idx, end_idx)
+    return result
+
+def append_missing_hosts_in_range(hosts, start_idx, end_idx):
+    """
+    In an expected range of hosts, ping for missing in-between host ranges
+    and add them if they exist. This helps smoothing out temporary sync issues
+    with avahi hostname discover, where some entries could be missing.
+    """
+    END_PADDING = 2  # extra index range to try when no specific end range is given
+    # TODO we could also keep trying until a ping returns False
+
+    def _new_address(host, idx):
+        return "%s-%s.%s" % (host.base_hostname, idx, host.domain)
+
+    def _new_host(host, idx):
+        hostname = "%s-%s" % (host.base_hostname, idx)
+        return AvahiHost(hostname, host.domain, host.protocol, host.interface, host.description)
+
+    result = []
+    if len(hosts) == 0:
+        return []  # No hosts to copy details from
+
+    if end_idx == float('inf'):
+        end_idx = int(hosts[-1].index) + END_PADDING
+
+    curr_idx = start_idx
+    l_idx = 0
+    while l_idx < len(hosts):
+        i = int(hosts[l_idx].index)
+        while curr_idx < i:
+            # Ping for missing in-between hosts
+            if ping(_new_address(hosts[l_idx], curr_idx)):
+                result.append(_new_host(hosts[l_idx], curr_idx))
+                print ("Adding host %s discovered by ping" % result[-1].address)
+            curr_idx += 1
+        result.append(hosts[l_idx])
+        curr_idx = int(hosts[l_idx].index) + 1
+        l_idx += 1
+    while curr_idx <= end_idx:
+        # Fill up hosts until the end of the range
+        if ping(_new_address(result[-1], curr_idx)):
+            result.append(_new_host(result[-1], curr_idx))
+            print ("Adding host %s discovered by ping" % result[-1].address)
+        curr_idx += 1
+
     return result
 
 def clear_known_hosts(hosts):
@@ -161,6 +220,7 @@ cssh-range.py [-h] [<username@>]<hostname_base> [<begin>] [<end>]
   -h, --help      Shows this help message
   -l, --list      List hostnames in range only, do not connect
   -c, --clearkeys Clear the ssh known_host keys for the hosts in range
+  -p, --ping      Ping to detect missing hostnames in range
 """
 
 def main(args):
@@ -197,6 +257,10 @@ def main(args):
     if '-c' in args or '--clearkeys' in args:
         do_clear_known_hosts = True
 
+    ping_missing = False
+    if "-p" in args or "--ping" in args:
+        ping_missing = True
+
     args = [a for a in args if not a.startswith('-')]
 
     if len(args) == 0:
@@ -205,16 +269,16 @@ def main(args):
         sys.exit(-1)
     elif len(args) == 1:
         user, base_hostname = _get_hostname_user(args[0])
-        hosts = discover_hosts_in_range(base_hostname)
+        hosts = discover_hosts_in_range(base_hostname, ping_missing)
     elif len(args) == 2:
         user, base_hostname = _get_hostname_user(args[0])
         idx_end = int(args[1])
-        hosts = discover_hosts_in_range(base_hostname, None, idx_end)
+        hosts = discover_hosts_in_range(base_hostname, ping_missing, None, idx_end)
     else:
         user, base_hostname = _get_hostname_user(args[0])
         idx_start = int(args[1])
         idx_end = int(args[2])
-        hosts = discover_hosts_in_range(base_hostname, idx_start, idx_end)
+        hosts = discover_hosts_in_range(base_hostname, ping_missing, idx_start, idx_end)
 
     if len(hosts) == 0:
         print "No hosts found"
