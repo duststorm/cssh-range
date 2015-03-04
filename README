@@ -60,6 +60,7 @@ cssh-range.py [-h] [<username@>]<hostname_base> [<begin>] [<end>]
   -h, --help      Shows this help message
   -l, --list      List hostnames in range only, do not connect
   -c, --clearkeys Clear the ssh known_host keys for the hosts in range
+  -p, --ping      Ping to detect missing hostnames in range
 
 
 Licensing
