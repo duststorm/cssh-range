@@ -37,6 +37,13 @@ Note that if you were to store "foo" in the hostname file, instead of "foo-1",
 the first device would get the hostname "foo" assigned, the others would get 
 "foo-1", "foo-2", ... This makes the first unit fall outside of the range.
 
+The tool also includes a ping (--ping, -p) feature that allows pinging missing
+hostnames in the range, which helps alleviate problems where the avahi hostname
+cache temporarily goes out of sync. Pinging other likely devices in the hostname
+range usually solves problems with missing devices. It's sometimes useful to use
+the -p switch together with an end argument when the number of devices in the
+range is known, as pinging non-existing devices takes a little longer.
+
 To use this tool, you need to have cssh or Cluster ssh and avahi-browse 
 installed. On debian-based systems these can be installed using:
   apt-get install clusterssh avahi-daemon avahi-utils
