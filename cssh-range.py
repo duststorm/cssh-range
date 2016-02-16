@@ -23,6 +23,7 @@
 import sys
 import os
 import subprocess
+import socket
 
 
 class AvahiHost(object):
@@ -36,6 +37,13 @@ class AvahiHost(object):
     @property
     def address(self):
         return "%s.%s" % (self.hostname, self.domain)
+
+    @property
+    def ip(self):
+        try:
+            return socket.gethostbyname_ex(self.address)[2][0]
+        except:
+            return None
 
     @property
     def base_hostname(self):
@@ -181,10 +189,16 @@ def clear_known_hosts(hosts):
         raise RuntimeError("Error: the ssh-keygen application is not installed")
     known_hosts_file = os.path.expanduser('~/.ssh/known_hosts')
 
-    for h in hosts:
-        print ("Forgetting known_host key for %s" % h.address)
-        p = subprocess.Popen([ssh_keygen, '-f', known_hosts_file, '-R', h.address])
+    def forget(address):
+        if not address:
+            return
+        print ("Forgetting known_host key for %s" % address)
+        p = subprocess.Popen([ssh_keygen, '-f', known_hosts_file, '-R', address])
         p.communicate()
+
+    for h in hosts:
+        forget(h.address)
+        forget(h.ip)
     return True
 
 def open_cssh(hosts, user=None):
